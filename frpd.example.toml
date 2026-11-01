@@ -1,0 +1,43 @@
+# frpd configuration. Contains credentials: chmod 600, and mount read-only in containers.
+# Top-level keys must stay above the first [[frps]] / [[frpc]] table.
+
+# Address to listen on. Use ":8080" inside a container (reachable from outside);
+# otherwise prefer loopback or a reverse proxy.
+listen = "127.0.0.1:8080"
+
+# Optional dashboard login (HTTP Basic). Set both or neither.
+# Basic auth is not encrypted: use HTTPS or a trusted network.
+# username = "admin"
+# password = "replace-with-a-secret"
+
+# Optional. Only needed if every create/edit/delete fails with
+# "cross-origin request blocked" because a proxy rewrites Host over plain HTTP.
+# Scheme and host[:port] only, no wildcards. See the README.
+# allowedOrigins = ["http://frp.lan"]
+
+# Optional frps management API, for traffic metrics and the unmatched-client view.
+# Omit this table and every `frps` key below to run without any frps connection.
+[[frps]]
+name = "public-edge"
+url = "https://frps.example.internal:7500"
+username = "admin"
+password = "replace-with-a-secret"
+
+# One [[frpc]] table per frpc instance. `name` is a unique display label.
+[[frpc]]
+name = "Edge A"
+order = 10 # Optional: lower numbers come first; unordered instances follow, sorted by name.
+url = "http://frpc-edge-a:7400"
+username = "admin"
+password = "replace-with-a-secret"
+# Link to the [[frps]] entry above. clientID must equal the top-level `clientID`
+# in this frpc's frpc.toml (not its `user` or hostname) and be unique on that frps.
+frps = "public-edge"
+clientID = "edge-a"
+
+[[frpc]]
+name = "edge-b"
+# Use https when this frpc has webServer.tls configured.
+url = "https://frpc-edge-b.example.internal:7400"
+username = "admin"
+password = "replace-with-a-secret"

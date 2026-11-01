@@ -1,0 +1,166 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.x
+          check-latest: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test browser model
+        run: node --test internal/web/jstest/proxy-editor-model.test.js
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        run: go vet ./...
+      - name: Test Go packages
+        run: go test ./...
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-amd64
+            target: linux/amd64
+          - name: linux-arm64
+            target: linux/arm64
+          - name: darwin-amd64
+            target: darwin/amd64
+          - name: darwin-arm64
+            target: darwin/arm64
+          - name: windows-amd64
+            target: windows/amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.x
+          check-latest: true
+      - name: Build ${{ matrix.target }}
+        env:
+          # Tag builds report the tag; other builds fall back to `git describe`.
+          VERSION: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+        run: ./build.sh ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frpd-${{ matrix.name }}
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: frpd-*
+          path: artifacts
+      - name: Package binaries
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          for dir in artifacts/frpd-*/; do
+            name=$(basename "$dir")
+            name=${name#frpd-}   # e.g. linux-amd64
+            os=${name%-*}
+            arch=${name#*-}
+            bin=$(find "$dir" -type f \( -name frpd -o -name frpd.exe \))
+            [ -n "$bin" ] || { echo "no binary in $dir" >&2; exit 1; }
+            base="frpd_${TAG}_${os}_${arch}"
+            mkdir -p "stage/$base"
+            cp "$bin" README.md LICENSE frpd.example.toml "stage/$base/"
+            chmod +x "stage/$base/$(basename "$bin")"   # artifact upload drops the executable bit
+            if [ "$os" = windows ]; then
+              (cd stage && zip -qr "../release/$base.zip" "$base")
+            else
+              tar -C stage -czf "release/$base.tar.gz" "$base"
+            fi
+          done
+          (cd release && sha256sum -- * > checksums.txt)
+          ls -l release
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          flags=(--title "$TAG" --generate-notes --verify-tag)
+          if [[ "$TAG" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$TAG" release/* "${flags[@]}"
+
+  docker:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta
+        env:
+          # Multi-arch images need annotations on the index for GHCR to show them.
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ghcr.io/lanjelin/frpd
+          # 1.2.3, 1.2, 1 (not for 0.x) and `latest` (stable tags only, via latest=auto).
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref_name, 'v0.') }}
+          # Generated automatically: source, url, version, revision, created.
+          labels: |
+            org.opencontainers.image.title=frpd
+            org.opencontainers.image.description=Browser dashboard for managing frpc proxies, with optional frps traffic and client views
+            org.opencontainers.image.documentation=https://github.com/Lanjelin/frpd#readme
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.base.name=gcr.io/distroless/static-debian12:nonroot
+          annotations: |
+            org.opencontainers.image.title=frpd
+            org.opencontainers.image.description=Browser dashboard for managing frpc proxies, with optional frps traffic and client views
+            org.opencontainers.image.documentation=https://github.com/Lanjelin/frpd#readme
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.base.name=gcr.io/distroless/static-debian12:nonroot
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: VERSION=${{ github.ref_name }}

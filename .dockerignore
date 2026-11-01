@@ -1,0 +1,9 @@
+.git
+.github
+frpd.toml
+frpd
+dist
+.env
+.env.*
+*.test
+coverage.out

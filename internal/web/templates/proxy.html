@@ -1,0 +1,12 @@
+{{define "proxy"}}
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>frpd</title><meta name="theme-color" content="#477EE5"><script src="{{asset "theme.js"}}"></script><link rel="stylesheet" href="{{asset "styles.css"}}"><script defer src="{{asset "app.js"}}"></script><script defer src="{{asset "proxy-editor-model.js"}}"></script><script defer src="{{asset "proxy-editor.js"}}"></script><link rel="icon" href="{{asset "frpd.svg"}}" type="image/svg+xml"><link rel="icon" href="{{asset "favicon-32.png"}}" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="{{asset "apple-touch-icon.png"}}"><link rel="manifest" href="{{asset "site.webmanifest"}}"></head>
+<body><header class="topbar"><div class="topbar-inner"><a class="brand" href="/"><img class="brand-icon" src="{{asset "frpd.svg"}}" width="28" height="28" alt="">frpd</a><div class="topbar-actions"><a class="button tiny secondary" href="/" data-i18n="dashboard">Dashboard</a><a class="button tiny secondary" href="/settings" data-i18n="settings">Settings</a></div></div></header>
+<main class="frpc-proxy-page"><form class="form frpc-proxy-form" method="post" action="{{if .IsEdit}}/instances/{{.Instance}}/proxies/{{.Name}}{{else}}/instances/{{.Instance}}/proxies{{end}}">
+{{if .Error}}<div class="notice bad">{{.Error}}</div>{{end}}
+  <div class="notice bad" data-unsupported-warning hidden></div>
+  <div data-proxy-editor data-editing="{{.IsEdit}}"></div>
+  <div class="frpc-edit-header frpc-raw-actions" data-proxy-raw-actions hidden><nav class="frpc-breadcrumb"><a href="/">Proxies</a><span>›</span><b>{{if .IsEdit}}Edit Proxy{{else}}New Proxy{{end}}</b></nav><div><button class="button tiny secondary" type="button" data-raw-toggle>Form editor</button><a class="button tiny secondary" href="/">Cancel</a><button class="button tiny" type="submit">{{if .IsEdit}}Update{{else}}Create{{end}}</button></div></div>
+  <label class="frpc-raw-editor" hidden><span>Store API JSON</span><textarea data-proxy-json id="proxy" name="proxy" spellcheck="false" required>{{.JSON}}</textarea><small>Editable request body for FRPC’s Store API.</small></label>
+</form></main></body></html>
+{{end}}

@@ -1,0 +1,25 @@
+{{define "frps-discovery"}}
+<section class="frps-discovery" aria-label="Unmatched FRPS clients">
+  {{range .Servers}}
+  <section class="panel frps-server-panel" data-frps-server="{{.Name}}">
+    <div class="panel-head tunnel-head"><div><h2><button type="button" class="panel-title-toggle" data-frps-collapse-title aria-expanded="true">{{.Name}}</button></h2><p>FRPS server · <span data-frps-client-count>{{len .Clients}}</span> unmatched clients</p></div><div class="panel-actions tunnel-actions"><div class="tunnel-controls"><button class="button tiny secondary proxy-collapse" type="button" data-frps-collapse aria-expanded="true">Hide</button><form method="post" action="/frps/{{.Name}}/prune" data-frps-prune><button class="button tiny warn" type="submit">Clear offline</button></form></div></div></div>
+    {{if .Error}}<div class="notice bad">Could not read FRPS clients: {{.Error}}</div>{{else}}
+    <div data-frps-client-list>
+    {{range .Clients}}
+    <section class="frps-client" aria-label="Client {{.Name}}" data-frps-user="{{.User}}" data-frps-client="{{.Name}}" data-frps-client-online="{{.Online}}">
+      <div class="frps-client-head"><div><h3>{{.Name}}</h3><span class="summary-muted">User: {{if .User}}{{.User}}{{else}}(none){{end}}{{if .Hostname}} · Host: {{.Hostname}}{{end}}</span></div><span class="badge {{if .Online}}ok{{else}}muted{{end}}">{{if .Online}}Online{{else}}Offline{{end}}</span></div>
+      {{if .Proxies}}<div class="table-wrap" data-proxy-table><table class="table frps-proxy-table">
+        <thead><tr><th data-column="name">Name</th><th data-column="state" data-i18n="state">State</th><th data-column="type" data-i18n="type">Type</th><th data-column="remote" data-i18n="remote">Remote</th><th data-column="traffic">Today traffic</th><th data-column="connections">Connections</th></tr></thead>
+        <tbody>{{range .Proxies}}<tr data-frps-offline="{{.Offline}}" data-proxy-type="{{.Type}}" data-vhost-http-port="{{.VhostHTTPPort}}" data-vhost-https-port="{{.VhostHTTPSPort}}">
+          <td class="mono" data-label="Name" data-column="name">{{.Name}}</td><td data-label="State" data-column="state"><span class="badge {{if .Offline}}muted{{else}}ok{{end}}">{{.Status}}</span></td><td data-label="Type" data-column="type"><span class="badge ok">{{.Type}}</span></td><td class="mono" data-label="Remote" data-column="remote"><a data-remote="{{.Remote}}">{{.Remote}}</a></td><td class="mono" data-label="Today traffic" data-column="traffic" data-sort-value="{{.TrafficTotal}}">{{.TrafficIn}} ↓ / {{.TrafficOut}} ↑</td><td data-label="Connections" data-column="connections" data-sort-value="{{.Connections}}">{{.Connections}}</td>
+        </tr>{{end}}</tbody>
+      </table></div><p class="frps-empty" data-frps-empty hidden>Offline proxies hidden by your settings.</p>{{else}}<p class="frps-empty">No proxies reported.</p>{{end}}
+    </section>
+    {{else}}<p class="frps-empty">No unmatched FRPS clients.</p>{{end}}
+    {{if .Clients}}<p class="frps-empty" data-frps-empty-clients hidden>Offline FRPS clients hidden by your settings.</p>{{end}}
+    </div>
+    {{end}}
+  </section>
+  {{else}}<p class="frps-empty">No FRPS servers are configured.</p>{{end}}
+</section>
+{{end}}

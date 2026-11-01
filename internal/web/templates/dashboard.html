@@ -1,0 +1,42 @@
+{{define "dashboard"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>frpd</title>
+  <script src="{{asset "theme.js"}}"></script>
+  <link rel="stylesheet" href="{{asset "styles.css"}}">
+  <script defer src="{{asset "app.js"}}"></script>
+  <meta name="theme-color" content="#477EE5">
+  <link rel="icon" href="{{asset "frpd.svg"}}" type="image/svg+xml">
+  <link rel="icon" href="{{asset "favicon-32.png"}}" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="{{asset "apple-touch-icon.png"}}">
+  <link rel="manifest" href="{{asset "site.webmanifest"}}">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <a class="brand" href="/"><img class="brand-icon" src="{{asset "frpd.svg"}}" width="28" height="28" alt="">frpd</a>
+  <div class="topbar-actions"><a class="button tiny secondary" href="/settings" data-i18n="settings">Settings</a></div>
+</div></header>
+<main class="page">
+  {{if .Message}}<div class="notice ok">{{.Message}}</div>{{end}}
+  {{if .Error}}<div class="notice bad">{{.Error}}</div>{{end}}
+  {{range .Instances}}
+  <section class="panel tunnel-panel" data-instance="{{.Name}}">
+    <div class="panel-head tunnel-head"><div class="tunnel-identity"><div class="tunnel-title-line"><h2><button type="button" class="panel-title-toggle" data-proxy-collapse-title aria-expanded="true">{{.Name}}</button></h2>{{if .FRPSConfigured}}{{if .FRPSError}}<span class="tunnel-frps bad" title="FRPS unavailable">FRPS</span>{{else}}<span class="tunnel-frps ok" title="FRPS connected · {{.FRPSVersion}} · {{.FRPSClientCount}} connected clients">FRPS</span>{{end}}{{end}}</div><p>{{len .Proxies}} proxies <span>·</span> {{.Running}} running <span>·</span> {{.Disabled}} disabled <span>·</span> {{.NotRunning}} not running</p></div><div class="panel-actions tunnel-actions"><div class="tunnel-metrics">{{if and .FRPSConfigured (not .FRPSError)}}{{if gt .FRPSMetricsMatched 0}}<span class="instance-metrics mono">{{.TrafficIn}} ↓</span><span class="instance-metrics mono">{{.TrafficOut}} ↑</span><span class="instance-metrics">{{.Connections}} conns</span>{{else}}<span class="instance-metrics">No proxy metrics</span>{{end}}{{end}}</div><div class="tunnel-controls"><button class="button tiny secondary proxy-collapse" type="button" data-proxy-collapse aria-expanded="true">Hide</button><a class="button tiny" href="/instances/{{.Name}}/proxies/new" data-i18n="addProxy">Add proxy</a></div></div></div>
+    {{if .Error}}<div class="notice bad">{{.Error}}</div>{{else}}
+    {{if .FRPSError}}<div class="notice bad">FRPS metrics unavailable: {{.FRPSError}}</div>{{end}}
+    {{if .StatusError}}<div class="notice bad">{{.StatusError}}</div>{{end}}
+    <div class="table-wrap" data-proxy-table><table class="table">
+      <thead><tr><th data-column="name">Name</th><th data-column="state" data-i18n="state">State</th><th data-column="type" data-i18n="type">Type</th><th data-column="local" data-i18n="local">Local</th><th data-column="remote" data-i18n="remote">Remote</th><th data-column="traffic">Today traffic</th><th data-column="connections">Connections</th><th class="actions" data-column="actions" data-i18n="actions">Actions</th></tr></thead>
+      <tbody>{{range .Proxies}}<tr data-proxy-type="{{.Type}}" data-proxy-enabled="{{.Enabled}}" data-proxy-state="{{.State}}" data-proxy-state-class="{{.StateClass}}" data-vhost-http-port="{{.VhostHTTPPort}}" data-vhost-https-port="{{.VhostHTTPSPort}}">
+        <td class="mono" data-label="Name" data-column="name">{{.Name}}</td><td data-label="State" data-column="state"><span class="badge {{.StateClass}}"{{if .Detail}} title="{{.Detail}}"{{end}}>{{.State}}</span></td><td data-label="Type" data-column="type"><span class="badge ok">{{.DisplayType}}</span></td><td class="mono" data-label="Local" data-column="local">{{.Local}}</td><td class="mono" data-label="Remote" data-column="remote"><a data-remote="{{.Remote}}" data-remote-link>{{.Remote}}</a></td><td class="mono" data-label="Today traffic" data-column="traffic"{{if .ServerState}} data-sort-value="{{.TrafficTotal}}"{{end}}>{{if .TrafficIn}}{{.TrafficIn}} ↓ / {{.TrafficOut}} ↑{{else}}—{{end}}</td><td data-label="Connections" data-column="connections"{{if .ServerState}} data-sort-value="{{.Connections}}"{{end}}>{{if .ServerState}}{{.Connections}}{{else}}—{{end}}</td>
+        <td class="actions" data-column="actions" data-label="Actions"><form method="post" action="/instances/{{.Instance}}/proxies/{{.Name}}/toggle"><input type="hidden" name="enabled" value="{{if .Enabled}}false{{else}}true{{end}}"><button class="button tiny {{if .Enabled}}warn{{else}}ok{{end}}" type="submit">{{if .Enabled}}Stop{{else}}Start{{end}}</button></form><a class="button tiny secondary" href="/instances/{{.Instance}}/proxies/{{.Name}}/edit">Edit</a><form method="post" action="/instances/{{.Instance}}/proxies/{{.Name}}/delete" data-confirm="Delete proxy {{.Name}}?"><button class="button tiny bad" type="submit">Delete</button></form></td>
+      </tr>{{else}}<tr><td class="empty" colspan="8">No stored proxies.</td></tr>{{end}}</tbody>
+    </table></div>{{end}}
+  </section>{{else}}<section class="panel"><div class="notice bad">No FRPC instances are configured.</div></section>{{end}}
+  <div data-frps-discovery hidden></div>
+</main>
+</body></html>
+{{end}}
