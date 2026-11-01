@@ -11,6 +11,21 @@ A browser dashboard for [frp](https://github.com/fatedier/frp). frpd lists your 
 - Sortable, collapsible tables, selectable columns, themes and languages. These preferences are stored in your browser.
 - Optional HTTP Basic login.
 
+## Screenshots
+
+<table>
+  <tr>
+    <th>Dashboard</th>
+    <th>Proxy editor</th>
+    <th>FRPS discovery</th>
+  </tr>
+  <tr>
+    <td valign="top"><a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" width="240" alt="Multi-instance dashboard with proxy states and traffic metrics"></a></td>
+    <td valign="top"><a href="docs/screenshots/proxy-editor.png"><img src="docs/screenshots/proxy-editor.png" width="240" alt="Guided HTTPS proxy editor in a light theme"></a></td>
+    <td valign="top"><a href="docs/screenshots/frps-discovery.png"><img src="docs/screenshots/frps-discovery.png" width="240" alt="Unmatched FRPS clients and their proxies"></a></td>
+  </tr>
+</table>
+
 ## Requirements
 
 - frpc v0.68.0 or newer with its web server and `[store]` enabled. frpd manages the proxies in frpc's Store; proxies defined in frpc's own config file are not listed.
