@@ -22,8 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Test browser model
-        run: node --test internal/web/jstest/proxy-editor-model.test.js
+      - name: Test browser model and editor
+        run: node --test internal/web/jstest/*.test.js
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
       - name: Vet
